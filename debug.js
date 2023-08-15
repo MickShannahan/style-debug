@@ -214,5 +214,5 @@ function getStyle(elm) {
 if (document.body && document.body.classList.contains('debug')) {
   initialize()
 } else {
-  window.alert('Debug script must be placed a the end of the body to work. Move it to just above the ending body tag')
+  console.warn('Style Debugger is shut off. To turn on, add the class "debug" to the body and refresh.')
 }
