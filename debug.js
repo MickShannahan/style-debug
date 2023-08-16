@@ -66,6 +66,7 @@ const hexTransparency = '40'
 function implementStyles() {
   let content = ''
   // #region non editable
+  let menuColor = '#232323cc'
   content += `
   #debug-button {
     position: fixed;
@@ -73,14 +74,17 @@ function implementStyles() {
     left: 1em;
     bottom: .25em;
     border-radius: 50em;
-    background: #00ff804e;
+    background: ${menuColor};
+    backdrop-filter: blur(10px);
+    color: #00ff37;
     border: 0;
   }
   #debug-button.off{
     filter: grayscale(1);
   }
   #debug-settings-button {
-    background-color: #232323;
+    background-color: ${menuColor};
+    backdrop-filter: blur(10px);
     position: fixed;
     bottom: .25em;
     left: 5em;
@@ -95,7 +99,7 @@ function implementStyles() {
     font-size: 14px;
     padding: 5px;
     border-radius: 12px;
-    background-color: #232323;
+    background-color: ${menuColor};
     backdrop-filter: blur(10px);
     border: 1px gray;
     box-shadow: 0px 2px 2px #00000040;
