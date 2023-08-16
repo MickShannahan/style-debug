@@ -1,5 +1,6 @@
 let styleTag = document.createElement('style')
 styleTag.id = 'debug-styles'
+
 const button = document.createElement('button')
 button.innerText = '🐛 on'
 button.id = 'debug-button'
@@ -11,18 +12,64 @@ button.addEventListener('click', () => {
     unsetBgs()
   } else {
     button.innerText = '🐛 on'
-    setStyles()
+    implementStyles()
   }
 })
 
-const transparentGreen = '#81cc6e40'
+const settingsButton = document.createElement('button')
+settingsButton.id = 'debug-settings-button'
+settingsButton.innerText = '⚙️'
+settingsButton.setAttribute('title', 'open settings menu')
+settingsButton.addEventListener('click', toggleSettingsMenu)
+
+const settingsMenu = document.createElement('div')
+settingsMenu.id = 'debug-settings-menu'
+settingsMenu.setAttribute('class', 'd-none')
 
 
-// container styles
-styleTag.innerHTML = `
+let settings = [
+  { name: 'menu open', on: false },
+  { name: 'container outline', on: true, color: '#00ffff' },
+  { name: 'row outline', on: true, color: '#ae00ff' },
+  { name: 'column outline', on: true, color: '#00ff37' },
+  { name: 'column color', on: true, color: '#81cc6e' },
+  { name: 'flex lines', on: true },
+  { name: 'relative visual', on: true, color: '#ff0080' },
+  { name: 'absolute visual', on: true, color: '#e6b4fe' },
+  { name: 'image squash', on: true, color: '#ff0080' },
+]
+
+function getSetting(setName, key = 'color') {
+  return settings.find(s => s.name == setName)[key]
+}
+
+const isValidHex = (hex) => /^#([A-Fa-f0-9]{3,4}){1,2}$/.test(hex)
+const getChunksFromString = (st, chunkSize) => st.match(new RegExp(`.{${chunkSize}}`, "g"))
+const convertHexUnitTo256 = (hexStr) => parseInt(hexStr.repeat(2 / hexStr.length), 16)
+function getAlphafloat(a, alpha) {
+  if (typeof a !== "undefined") { return a / 255 }
+  if ((typeof alpha != "number") || alpha < 0 || alpha > 1) {
+    return 1
+  }
+  return alpha
+}
+function hexToRGBA(hex, alpha) {
+  if (!isValidHex(hex)) { throw new Error("Invalid HEX") }
+  const chunkSize = Math.floor((hex.length - 1) / 3)
+  const hexArr = getChunksFromString(hex.slice(1), chunkSize)
+  const [r, g, b, a] = hexArr.map(convertHexUnitTo256)
+  return `rgba(${r}, ${g}, ${b}, ${getAlphafloat(a, alpha).toFixed(2)})`
+}
+
+const hexTransparency = '40'
+
+function implementStyles() {
+  let content = ''
+  // #region non editable
+  content += `
   #debug-button {
     position: fixed;
-    padding: 0px 10px
+    padding: 0px 10px;
     left: 1em;
     bottom: .25em;
     border-radius: 50em;
@@ -32,50 +79,94 @@ styleTag.innerHTML = `
   #debug-button.off{
     filter: grayscale(1);
   }
-
+  #debug-settings-button {
+    background-color: #232323;
+    position: fixed;
+    bottom: .25em;
+    left: 5em;
+    border: 0;
+    border-radius: 50em;
+    padding: 0 10px;
+  }
+  
+  #debug-settings-menu {
+    width: max-content;
+    color: whitesmoke;
+    font-size: 14px;
+    padding: 5px;
+    border-radius: 12px;
+    background-color: #232323;
+    backdrop-filter: blur(10px);
+    border: 1px gray;
+    box-shadow: 0px 2px 2px #00000040;
+    position: fixed;
+    bottom: 2.5em;
+    left: 1em;
+  }
+  
+  #debug-settings-menu>div {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    background-image: unset;
+  }
+  
+  #debug-settings-menu input {
+    accent-color: rgb(80, 66, 235);
+  }
+  
+  #debug-settings-menu input[type*=color] {
+    width: 30px;
+    height: 1em;
+    margin-left: 5px;
+  }
+  `
+  // #endregion
+  //container-styles
+  if (getSetting('container outline', 'on')) content += `
   body.debug .container,
   body.debug .container-fluid {
-    outline: 2px solid #00ffff;
+    outline: 2px solid ${getSetting('container outline')};
     outline-offset: -1px;
   }`
   // row styles
-  + `
+  if (getSetting('row outline', 'on')) content += `
   body.debug .row, data.debug [data-debug*=flex] {
-    outline: 2px dashed rgb(174, 0, 255);
-    outline-offset: -3px;
-    background-color: rgba(174, 0, 255, .05);
+    outline: 2px dashed ${getSetting('row outline')};
+    outline-offset: -2px;
   }`
   // row out of container
-  + `
-  body.debug *:not([class*="container"])>.row::before {
+  content += `
+  body.debug *:not(:is([class*="container"], [class*=col]))>.row::before {
    ${elementError('row out of container. Wrap rows with container or container-fluid')}
   }`
   // row in direct row
-  + `body.debug .row>.row::before{
+  content += `body.debug .row>.row::before{
     ${elementError('row nested directly in another row.')}
   }
   `
   // column
-  + `
+  if (getSetting('column outline', 'on')) content += `
   body.debug [class*="col"] {
-    outline: 2px dotted #00ff37;
+    outline: 2px dotted ${getSetting('column outline')};
     outline-offset: -3px;
   }`
-  + `
+
+  content += `
   body.debug [class*=col]>[class*=col]::before{
     ${elementError('column nested directly in column, columns should only be children of rows')}
   }
   `
   // Position relative tag
-  + `
+  if (getSetting('relative visual', 'on')) content += `
   body.debug [data-debug*=relative]{
-    outline: 2px dotted #ff0080!important;
+    outline: 2px dotted ${getSetting('relative visual')}!important;
   }
   body.debug [data-debug*=relative]::before{
     content: 'relative';
     font-size: .75rem;
     color: white;
-    background: #ff008040;
+    background: ${getSetting('relative visual')}99;
     position:absolute;
     transform: translateY(-1.25rem);
     padding: 0 5px;
@@ -83,16 +174,16 @@ styleTag.innerHTML = `
   }
   `
   // Position absolute tag
-  + `
+  if (getSetting('absolute visual', 'on')) content += `
   body.debug [data-debug*=absolute]{
-    outline: 2px dotted #ffffff!important;
+    outline: 2px dotted ${getSetting('absolute visual')}!important;
     outline-offset: -1px;
   }
   body.debug [data-debug*=absolute]::before{
     content: 'abs';
     font-size: .75rem;
     color: white;
-    background: #ffffff40;
+    background: ${getSetting('absolute visual')}99;
     position:absolute;
     top: 0;
     left: -4.5ch;
@@ -100,8 +191,8 @@ styleTag.innerHTML = `
     border-radius: 50em;
   }
   `
-  + // ELEMENT out of bounds
-  `
+  content += // ELEMENT out of bounds
+    `
   body.debug [data-debug*=out-of-bounds]{
     outline: 4px double red !important;
     outline-offset: -4px !important;
@@ -111,6 +202,11 @@ styleTag.innerHTML = `
     ${elementError('Element Out of Bounds')}
     right:0;
   }`
+
+  styleTag.innerHTML = content
+  computedStyles()
+}
+
 
 function elementError(message) {
   return `
@@ -125,39 +221,47 @@ let body, script, allElms, containers, rows, cols, flexibles;
 
 function initialize() {
   body = document.body
-  body.appendChild(button)
-  body.append(styleTag)
+
+
   script = body.querySelector('#debug-script')
   allElms = body.querySelectorAll('*')
   containers = body.querySelectorAll('[class*=container]')
   rows = body.querySelectorAll('.row')
   cols = body.querySelectorAll('[class*=col]')
   flexibles = Array.from(allElms).filter(e => getStyle(e).display == 'flex')
-  setStyles()
+  body.appendChild(button)
+  body.appendChild(settingsButton)
+  body.appendChild(settingsMenu)
+  body.append(styleTag)
+
+  implementStyles()
+  drawMenu()
   horizontalScrollPolice()
 }
 
-function setStyles() {
-
+function computedStyles() {
+  unsetBgs()
   //cols
-  cols.forEach(e => {
-    let styles = getStyle(e)
-    console.log(styles.backgroundColor)
-    if (styles.backgroundColor == 'rgba(0, 0, 0, 0)') {
-      e.style.backgroundColor = transparentGreen;
-      console.log(getStyle(e).backgroundColor)
-    }
-  })
+  if (getSetting('column color', 'on')) {
+    cols.forEach(e => {
+      let styles = getStyle(e)
+      if (styles.backgroundColor == 'rgba(0, 0, 0, 0)') {
+        e.style.backgroundColor = getSetting('column color') + hexTransparency;
+      }
+    })
+  }
 
   // display flex
   flexibles.forEach(e => {
     e.setAttribute('data-debug', 'flex')
-    let styles = getStyle(e)
-    if (styles.backgroundImage == 'none') {
-      e.style.backgroundImage = 'url(https://www.transparenttextures.com/patterns/axiom-pattern.png)'
-    } else {
-      e.style.backgroundImage = 'url(https://www.transparenttextures.com/patterns/axiom-pattern.png),' + styles.backgroundImage
-      e.style.backgroundSize = '75px, ' + styles.backgroundSize
+    if (getSetting('flex lines', 'on')) {
+      let styles = getStyle(e)
+      if (styles.backgroundImage == 'none') {
+        e.style.backgroundImage = 'url(https://www.transparenttextures.com/patterns/axiom-pattern.png)'
+      } else {
+        e.style.backgroundImage = 'url(https://www.transparenttextures.com/patterns/axiom-pattern.png),' + styles.backgroundImage
+        e.style.backgroundSize = '75px, ' + styles.backgroundSize
+      }
     }
   })
 
@@ -184,8 +288,10 @@ function unsetBgs() {
       e.style.backgroundImage = 'unset'
     }
   })
-
-  const columns = Array.from(cols).filter(e => getStyle(e).backgroundColor == 'rgba(129, 204, 110, 0.25)')
+  let hex = getSetting('column color') + hexTransparency
+  const columns = Array.from(cols).filter(e => {
+    return getStyle(e).backgroundColor == hexToRGBA(hex)
+  })
   columns.forEach(e => {
     e.style.backgroundColor = 'rgba(0, 0, 0, 0)'
   })
@@ -211,8 +317,72 @@ function getStyle(elm) {
   return window.getComputedStyle(elm)
 }
 
+function drawMenu() {
+  let menu = ''
+  settings.slice(1).forEach(set => {
+    menu += `
+  <div>
+    <div>
+      <input type="checkbox" ${set.on ? 'checked' : ''} onchange="toggleSetting('${set.name}')"/> ${set.name}
+    </div>
+    <div>
+    ${set.color ? `<input type="color" value="${set.color}" onchange="changeSetting('${set.name}', 'color', event)">` : ''}
+    </div>
+  </div>`
+  })
+  document.getElementById('debug-settings-menu').innerHTML = menu
+}
+
+
+function toggleSettingsMenu() {
+  if (getSetting('menu open', 'on')) {
+    settingsButton.innerText = '⚙️'
+    console.log('🐛debug settings saved')
+  } else {
+    settingsButton.innerText = '💾'
+  }
+  settings[0].on = !settings[0].on // settings 0 is always the menu open
+  saveSettings()
+  document.getElementById('debug-settings-menu').classList.toggle('d-none')
+}
+
+function toggleSetting(setting, redraw = true) {
+  console.log('toggle', setting)
+  let set = settings.find(s => s.name == setting)
+  set.on = !set.on
+  if (redraw) implementStyles()
+}
+
+function changeSetting(setting, type, e) {
+  let newVal = e.target.value
+  let set = settings.find(s => s.name == setting)
+  set.on = false
+  computedStyles()
+  set[type] = newVal
+  set.on = true
+  implementStyles()
+}
+
+// local storage
+function saveSettings() {
+  let data = JSON.stringify(settings)
+  localStorage.setItem('debug-settings', data)
+}
+
+function loadSettings() {
+  let data = localStorage.getItem('debug-settings')
+  if (data) {
+    settings = JSON.parse(data)
+  }
+}
+
+
+// INITIALIZE
 if (document.body && document.body.classList.contains('debug')) {
+  loadSettings()
   initialize()
 } else {
   console.warn('Style Debugger is shut off. To turn on, add the class "debug" to the body and refresh.')
 }
+
+
