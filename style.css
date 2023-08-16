@@ -2,6 +2,12 @@
   color: #81cc6e40
 }
 
+.img-squish {
+  height: 10vh;
+  width: 100%;
+  /* object-fit: scale-down */
+}
+
 
 /* #debug-settings-button {
   background-color: #232323;

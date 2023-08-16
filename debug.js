@@ -36,11 +36,14 @@ let settings = [
   { name: 'flex lines', on: true },
   { name: 'relative visual', on: true, color: '#ff0080' },
   { name: 'absolute visual', on: true, color: '#e6b4fe' },
-  { name: 'image squash', on: true, color: '#ff0080' },
+  { name: 'horizontal spill', on: true, },
+  { name: 'image squash', on: true, },
 ]
 
 function getSetting(setName, key = 'color') {
-  return settings.find(s => s.name == setName)[key]
+  const set = settings.find(s => s.name == setName)
+  if (!set) console.error('no setting ' + setName)
+  return set[key]
 }
 
 const isValidHex = (hex) => /^#([A-Fa-f0-9]{3,4}){1,2}$/.test(hex)
@@ -206,6 +209,14 @@ function implementStyles() {
     ${elementError('Element Out of Bounds')}
     right:0;
   }`
+  // IMAGE squash
+  if (getSetting('image squash', 'on')) content +=
+    `
+  body.debug [data-debug*=img-squash]{
+    outline: 2px solid red;
+  }
+  `
+
 
   styleTag.innerHTML = content
   computedStyles()
@@ -240,7 +251,6 @@ function initialize() {
 
   implementStyles()
   drawMenu()
-  horizontalScrollPolice()
 }
 
 function computedStyles() {
@@ -277,6 +287,9 @@ function computedStyles() {
     e.style.outlineOffset = (parseInt(getStyle(e).padding) * -1) + 'px'
   })
   absolutes.forEach(e => e.setAttribute('data-debug', 'absolute'))
+
+  if (getSetting('horizontal spill', 'on')) horizontalScrollPolice()
+  if (getSetting('image squash', 'on')) imageSquashPolice()
 }
 
 
@@ -312,6 +325,20 @@ function horizontalScrollPolice() {
   })
 }
 
+function imageSquashPolice() {
+  const images = document.querySelectorAll('img')
+  images.forEach(img => {
+    if ((img.offsetWidth / img.offsetHeight).toFixed(2) != (img.naturalWidth / img.naturalHeight).toFixed(2)) {
+      let styles = getStyle(img)
+      if (styles.objectFit == 'fill') {
+        img.setAttribute('data-debug', 'img-squash')
+        console.warn('⚠️ squashed image alert ⬇️')
+        console.log(img)
+      }
+    }
+  })
+}
+
 /**
  * 
  * @param {HTMLElement} elm element
@@ -342,16 +369,16 @@ function toggleSettingsMenu() {
   if (getSetting('menu open', 'on')) {
     settingsButton.innerText = '⚙️'
     console.log('🐛debug settings saved')
+    settings[0].on = false
+    saveSettings()
   } else {
     settingsButton.innerText = '💾'
+    settings[0].on = true
   }
-  settings[0].on = !settings[0].on // settings 0 is always the menu open
-  saveSettings()
   document.getElementById('debug-settings-menu').classList.toggle('d-none')
 }
 
 function toggleSetting(setting, redraw = true) {
-  console.log('toggle', setting)
   let set = settings.find(s => s.name == setting)
   set.on = !set.on
   if (redraw) implementStyles()
