@@ -1,19 +1,22 @@
 let styleTag = document.createElement('style')
+let debugMenuStyleTag = document.createElement('style')
+debugMenuStyleTag.id = 'debug-menu-styles'
 styleTag.id = 'debug-styles'
 
 const button = document.createElement('button')
-button.innerText = '🐛 on'
 button.id = 'debug-button'
 button.addEventListener('click', () => {
-  document.body.classList.toggle('debug')
-  button.classList.toggle('off')
-  if (button.innerText == '🐛 on') {
-    button.innerText = '🐛 off'
+  if (settings[0].on) {
+    settings[0].on = false
+    document.body.classList.remove('debug')
     unsetBgs()
   } else {
-    button.innerText = '🐛 on'
+    settings[0].on = true
+    document.body.classList.add('debug')
     implementStyles()
   }
+  saveSettings()
+  drawButton()
 })
 
 const settingsButton = document.createElement('button')
@@ -28,6 +31,7 @@ settingsMenu.setAttribute('class', 'd-none')
 
 
 let settings = [
+  { name: 'active', on: true }, // active is always first
   { name: 'menu open', on: false },
   { name: 'container outline', on: true, color: '#00ffff' },
   { name: 'row outline', on: true, color: '#ae00ff' },
@@ -66,11 +70,9 @@ function hexToRGBA(hex, alpha) {
 
 const hexTransparency = '40'
 
-function implementStyles() {
-  let content = ''
-  // #region non editable
+function menuStyles() {
   let menuColor = '#232323cc'
-  content += `
+  let content = `
   #debug-button {
     position: fixed;
     padding: 0px 10px;
@@ -128,7 +130,11 @@ function implementStyles() {
     margin-left: 5px;
   }
   `
-  // #endregion
+  debugMenuStyleTag.innerHTML = content
+}
+
+function implementStyles() {
+  let content = ''
   //container-styles
   if (getSetting('container outline', 'on')) content += `
   body.debug .container,
@@ -237,20 +243,27 @@ let body, script, allElms, containers, rows, cols, flexibles;
 function initialize() {
   body = document.body
 
-
   script = body.querySelector('#debug-script')
   allElms = body.querySelectorAll('*')
   containers = body.querySelectorAll('[class*=container]')
   rows = body.querySelectorAll('.row')
-  cols = body.querySelectorAll('[class*=col]')
+  cols = body.querySelectorAll('[class^=col-]')
   flexibles = Array.from(allElms).filter(e => getStyle(e).display == 'flex')
   body.appendChild(button)
   body.appendChild(settingsButton)
   body.appendChild(settingsMenu)
   body.append(styleTag)
+  body.append(debugMenuStyleTag)
 
+  menuStyles()
   implementStyles()
+  drawButton()
   drawMenu()
+
+  if (!getSetting('active', 'on')) {
+    document.body.classList.remove('debug')
+    unsetBgs()
+  }
 }
 
 function computedStyles() {
@@ -348,6 +361,16 @@ function getStyle(elm) {
   return window.getComputedStyle(elm)
 }
 
+function drawButton() {
+  if (getSetting('active', 'on')) {
+    button.innerText = '🐛 on'
+    button.classList.remove('off')
+  } else {
+    button.innerText = '🐛 off'
+    button.classList.add('off')
+  }
+}
+
 function drawMenu() {
   let menu = ''
   settings.slice(1).forEach(set => {
@@ -363,7 +386,6 @@ function drawMenu() {
   })
   document.getElementById('debug-settings-menu').innerHTML = menu
 }
-
 
 function toggleSettingsMenu() {
   if (getSetting('menu open', 'on')) {
